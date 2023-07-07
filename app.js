@@ -36,6 +36,7 @@ app.listen(PORT, (error) => {
     console.log(
       "Server is Successfully Running, and App is listening on port " + PORT
     );
+    console.log(`Access at http://localhost:${PORT}`);
   } else console.log("Error occurred, server can't start", error);
 });
 
@@ -46,16 +47,27 @@ app.get("/callback", (req, res) => {
     processDroppPayment(queryObject.p2p, res);
   } else {
     const paymentResponse = queryObject.paymentResponse;
-    res.render("callback.ejs", { paymentResponse });
+    const paymentResponseData = JSON.parse(decodeURIComponent(paymentResponse));
+    const returnValue = {
+      responseCode: paymentResponseData.responseCode,
+      errors: [],
+      data: paymentResponseData.data,
+    };
+    returnCallback(returnValue, res);
   }
 });
 
 app.get("/redeem-callback", (req, res) => {
   const queryObject = url.parse(req.url, true).query;
+  const customerAccountId = queryObject.customerAccountId;
+  const creditAmount = queryObject.amount;
+  const merchantId = req.query.merchantId;
+  const signingKey = req.query.signingKey;
+
   processRedemption(
     {
-      userAccountId: queryObject.userAccountId,
-      amount: queryObject.amount,
+      customerAccountId: customerAccountId,
+      creditAmount: creditAmount,
     },
     res
   );
@@ -103,45 +115,37 @@ function processDroppPayment(p2p, res) {
   }
 }
 
-function returnCallback(returnValue, res) {
-  res.writeHead(200);
-  res.end(
-    JSON.stringify({
-      status: returnValue.responseCode === 0 ? "success" : "failure",
-      responseCode: returnValue.responseCode,
-      paymentResponse: returnValue,
-    })
+function processRedemption(data, res) {
+  let redemptionData = {
+    merchantAccountId: myDroppMerchantAccountId,
+    userAccountId: data.customerAccountId,
+    amount: data.creditAmount,
+    currency: "USD",
+    creditReference: "Test redeem",
+    ipAddress: "127.0.0.1", //todo
+  };
+  log(
+    `Credit payment. Initiating: ${redemptionData.currency} ${redemptionData.amount},  ${redemptionData.merchantAccountId} --> ${redemptionData.userAccountId}.`
   );
+  processCreditPayment(redemptionData, res, returnCallback);
 }
 
-// const requestListener = function (req, res) {
-//   let urlObject = url.parse(req.url, true);
-//   const queryObject = urlObject.query;
-//   let pathname = urlObject.pathname;
-//   switch (pathname) {
-//     case "/callback":
-//       processDroppPayment(queryObject.p2p, res);
-//       break;
-//     case "/redeem-callback":
-//       processRedemption(
-//         {
-//           userAccountId: queryObject.userAccountId,
-//           amount: queryObject.amount,
-//         },
-//         res
-//       );
-//       break;
-//     case "/":
-//     /* fall through */
-//     case "/index.html":
-//       pathname = "/pages/index.html";
-//     /* fall through */
-//     default:
-//       if (pathname.endsWith(".html")) {
-//         serveFileContents(pathname, res);
-//       } else {
-//         unknown(res);
-//       }
-//       break;
-//   }
-// };
+function processCreditPayment(data, res, callback) {
+  // NOTE: validate data is as per your needs to confirm everything is in order as you expect.
+  const droppClient = new DroppClient("SANDBOX");
+  const signingKey = process.env.DROPP_MERCHANT_SIGNING_KEY;
+  droppClient
+    .createPaymentRequest(droppPaymentType.credit)
+    .submit(data, signingKey)
+    .then(function (paymentResponse) {
+      callback(paymentResponse, res);
+    })
+    .catch(function (paymentError) {
+      callback(paymentError, res);
+    });
+}
+
+function returnCallback(returnValue, res) {
+  const status = returnValue.responseCode === 0 ? "success" : "failure";
+  res.render("callback.ejs", { paymentResponse: returnValue, status });
+}
