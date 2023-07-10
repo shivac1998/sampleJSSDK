@@ -17,6 +17,16 @@ app.post("/update-signing-key", (req, res) => {
   res.sendStatus(200);
 });
 
+let merchantAccountId = "";
+let merchantSigningKey = "";
+app.post("/update-merchant-details", (req, res) => {
+  const { signingKey, merchantId } = req.body;
+
+  merchantAccountId = merchantId;
+  merchantSigningKey = signingKey;
+  res.sendStatus(200);
+});
+
 app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -58,9 +68,8 @@ app.get("/callback", (req, res) => {
 });
 
 app.get("/redeem-callback", (req, res) => {
-  const queryObject = url.parse(req.url, true).query;
-  const customerAccountId = queryObject.customerAccountId;
-  const creditAmount = queryObject.amount;
+  const customerAccountId = req.query.userAccountId;
+  const creditAmount = req.query.amount;
   const merchantId = req.query.merchantId;
   const signingKey = req.query.signingKey;
 
@@ -68,6 +77,8 @@ app.get("/redeem-callback", (req, res) => {
     {
       customerAccountId: customerAccountId,
       creditAmount: creditAmount,
+      merchantId: merchantId,
+      merchantSigningKey: signingKey,
     },
     res
   );
@@ -121,38 +132,47 @@ function returnCallback(returnValue, res) {
 }
 
 function processRedemption(data, res) {
-  let redemptionData = {
-    merchantAccountId: myDroppMerchantAccountId,
+  const redemptionData = {
+    merchantAccountId: merchantAccountId,
     userAccountId: data.customerAccountId,
     amount: data.creditAmount,
     currency: "USD",
     creditReference: "Test redeem",
     ipAddress: "127.0.0.1", //todo
   };
-  log(
+  console.log(
     `Credit payment. Initiating: ${redemptionData.currency} ${redemptionData.amount},  ${redemptionData.merchantAccountId} --> ${redemptionData.userAccountId}.`
   );
-  processRedemptionPayment(redemptionData, res, returnRedemptionCallback);
+  processRedemptionPayment(
+    redemptionData,
+    res,
+    merchantSigningKey,
+    returnRedemptionCallback
+  );
 }
 
-function processRedemptionPayment(data, res, callback) {
+function processRedemptionPayment(data, res, signingKey, callbackFunc) {
   // NOTE: validate data is as per your needs to confirm everything is in order as you expect.
   const droppClient = new DroppClient("SANDBOX");
-  const signingKey = process.env.DROPP_MERCHANT_SIGNING_KEY;
   droppClient
     .createPaymentRequest(droppPaymentType.credit)
     .submit(data, signingKey)
     .then(function (paymentResponse) {
-      callback(paymentResponse, res);
+      callbackFunc(paymentResponse, res);
     })
     .catch(function (paymentError) {
-      callback(paymentError, res);
+      const errorResponse = {
+        responseCode: -1,
+        errors: [paymentError.message], // Update the error response with the actual error message
+        data: null,
+      };
+      callbackFunc(errorResponse, res);
     });
 }
 
 function returnRedemptionCallback(returnValue, res) {
   const status = returnValue.responseCode === 0 ? "success" : "failure";
-  res.render("redemptionCallbackallback.ejs", {
+  res.render("redemptionCallback.ejs", {
     paymentResponse: returnValue,
     status,
   });
