@@ -115,6 +115,11 @@ function processDroppPayment(p2p, res) {
   }
 }
 
+function returnCallback(returnValue, res) {
+  const status = returnValue.responseCode === 0 ? "success" : "failure";
+  res.render("callback.ejs", { paymentResponse: returnValue, status });
+}
+
 function processRedemption(data, res) {
   let redemptionData = {
     merchantAccountId: myDroppMerchantAccountId,
@@ -127,10 +132,10 @@ function processRedemption(data, res) {
   log(
     `Credit payment. Initiating: ${redemptionData.currency} ${redemptionData.amount},  ${redemptionData.merchantAccountId} --> ${redemptionData.userAccountId}.`
   );
-  processCreditPayment(redemptionData, res, returnCallback);
+  processRedemptionPayment(redemptionData, res, returnRedemptionCallback);
 }
 
-function processCreditPayment(data, res, callback) {
+function processRedemptionPayment(data, res, callback) {
   // NOTE: validate data is as per your needs to confirm everything is in order as you expect.
   const droppClient = new DroppClient("SANDBOX");
   const signingKey = process.env.DROPP_MERCHANT_SIGNING_KEY;
@@ -145,7 +150,10 @@ function processCreditPayment(data, res, callback) {
     });
 }
 
-function returnCallback(returnValue, res) {
+function returnRedemptionCallback(returnValue, res) {
   const status = returnValue.responseCode === 0 ? "success" : "failure";
-  res.render("callback.ejs", { paymentResponse: returnValue, status });
+  res.render("redemptionCallbackallback.ejs", {
+    paymentResponse: returnValue,
+    status,
+  });
 }

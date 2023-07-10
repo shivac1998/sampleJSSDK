@@ -127,6 +127,19 @@
       </label>
       <button type="submit">Redeem</button>
     </form>
+    <script>
+      function handleFormSubmit(event) {
+        event.preventDefault();
+        var inputField = document.getElementById("merchant-id-input");
+        var merchantID = inputField.value;
+
+        var signingKeyField = document.getElementById("signing-key-input");
+        var signingKey = signingKeyField.value;
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/");
+      }
+    </script>
     <div><a href="/">Return Home</a></div>
   </body>
 </html>
