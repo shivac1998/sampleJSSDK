@@ -100,7 +100,11 @@
         Use case of merchant paying or crediting the customer
       </p>
     </div>
-    <form action="http://localhost:8000/redeem-callback" target="_blank">
+    <form
+      action="http://localhost:8000/update-merchant-details"
+      method="POST"
+      target="_blank"
+    >
       <label for="merchant-id-input">Merchant ID:</label>
       <input type="text" id="merchant-id-input" required />
       <label for="signing-key-input">Private Key:</label>
@@ -137,7 +141,9 @@
         // Get the values from the input fields
         const merchantId = document.getElementById("merchant-id-input").value;
         const signingKey = document.getElementById("signing-key-input").value;
-        const userAccountId = document.getElementById("userAccountId").value;
+        const userAccountId = document.getElementById(
+          "user-account-id-input"
+        ).value;
         const amount = document.getElementById("amount").value;
 
         // Send an HTTP request to the server to update merchant details
@@ -148,16 +154,19 @@
         xhr.onreadystatechange = function () {
           if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
             // After the merchant details are updated, redirect to the redeem callback page
-            const redirectUrl = `/redeem-callback?userAccountId=${userAccountId}&amount=${amount}&merchantId=${merchantId}&signingKey=${signingKey}`;
+            const redirectUrl = `/redeem-callback?userAccountId=${userAccountId}&amount=${amount}&merchantId=${merchantId}`;
             window.location.href = redirectUrl;
           }
         };
 
-        xhr.send(
-          JSON.stringify({ signingKey, merchantId, userAccountId, amount })
-        );
+        const requestBody = {
+          signingKey,
+        };
+
+        xhr.send(JSON.stringify(requestBody));
       }
     </script>
+
     <div><a href="/">Return Home</a></div>
   </body>
 </html>

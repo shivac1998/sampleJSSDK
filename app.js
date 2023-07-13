@@ -6,28 +6,7 @@ const app = express();
 const PORT = 8000;
 const bodyParser = require("body-parser");
 
-const droppPayment = require("./dropp-payment");
 const { DroppClient } = require("./dropp-sdk-js");
-
-let signingKey = "";
-app.use(bodyParser.json());
-app.post("/update-signing-key", (req, res) => {
-  const { signingKey: updatedSigningKey } = req.body;
-  signingKey = updatedSigningKey;
-  res.sendStatus(200);
-});
-
-let merchantAccountId = "0.0.4043972";
-let merchantSigningKey =
-  "8bd83f9a9eec3a210e726089d48008a09ec39d3aa0d5094667b0d1e36f753c2a";
-app.post("/update-merchant-details", (req, res) => {
-  const { signingKey, merchantId, userAccountId, amount } = req.body;
-
-  merchantAccountId = merchantId;
-  merchantSigningKey = signingKey;
-
-  res.sendStatus(200);
-});
 
 app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public")));
@@ -72,11 +51,35 @@ app.get("/callback", (req, res) => {
 app.get("/redeem-callback", (req, res) => {
   let urlObject = url.parse(req.url, true);
   const queryObject = urlObject.query;
-  let pathname = urlObject.pathname;
   processRedemption(
     { userAccountId: queryObject.userAccountId, amount: queryObject.amount },
     res
   );
+});
+
+let signingKey = "";
+app.use(bodyParser.json());
+app.post("/update-signing-key", (req, res) => {
+  const { signingKey: updatedSigningKey } = req.body;
+  signingKey = updatedSigningKey;
+  res.sendStatus(200);
+});
+
+// let merchantAccountId = "0.0.4043972";
+// let merchantSigningKey =
+//   "8bd83f9a9eec3a210e726089d48008a09ec39d3aa0d5094667b0d1e36f753c2a";
+app.post("/update-merchant-details", (req, res) => {
+  const {
+    signingKey: updatedSigningKey,
+    merchantId,
+    userAccountId,
+    amount,
+  } = req.body;
+  signingKey = updatedSigningKey;
+
+  processRedemption({ userAccountId, amount }, res);
+
+  res.sendStatus(200);
 });
 
 const droppPaymentType = {
@@ -143,13 +146,13 @@ function processRedemption(data, res) {
 function processRedemptionPayment(data, res, callback) {
   // NOTE: validate data is as per your needs to confirm everything is in order as you expect.
   const droppClient = new DroppClient("SANDBOX");
-  const signingKey =
-    "8bd83f9a9eec3a210e726089d48008a09ec39d3aa0d5094667b0d1e36f753c2a";
+  const signingKey = data.signingKey;
   droppClient
     .createPaymentRequest(droppPaymentType.credit)
     .submit(data, signingKey)
     .then(function (paymentResponse) {
       callback(paymentResponse, res);
+      res.sendStatus(200);
     })
     .catch(function (paymentError) {
       callback(paymentError, res);
