@@ -77,14 +77,15 @@
       <p>Status: <%= status %></p>
       <pre id="paymentResponse"></pre>
     </div>
+
     <script>
       function displayPaymentData(data) {
-        var paymentResponseElement = document.getElementById("redemptionData");
+        var paymentResponseElement = document.getElementById("paymentResponse");
         paymentResponseElement.textContent = JSON.stringify(data, null, 2);
       }
 
       var queryParams = new URLSearchParams(window.location.search);
-      var paymentResponse = queryParams.get("redemptionData");
+      var paymentResponse = queryParams.get("paymentResponse");
 
       if (paymentResponse) {
         var decodedPaymentResponse = decodeURIComponent(paymentResponse);

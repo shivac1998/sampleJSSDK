@@ -6,7 +6,10 @@ const app = express();
 const PORT = 8000;
 const bodyParser = require("body-parser");
 
-const { DroppClient } = require("./dropp-sdk-js");
+const droppSdk = require("./dropp-sdk-js");
+
+const redemptionController = require("./controllers/redemptionController");
+const recurringController = require("./controllers/recurringController");
 
 app.set("view engine", "ejs");
 app.use(express.static(path.join(__dirname, "public")));
@@ -20,6 +23,9 @@ app.get("/single-payment", (req, res) => {
 });
 app.get("/redeem", (req, res) => {
   res.sendFile(path.join(__dirname, "pages", "redeem.html"));
+});
+app.get("/recurring", (req, res) => {
+  res.sendFile(path.join(__dirname, "pages", "recurring.html"));
 });
 
 app.listen(PORT, (error) => {
@@ -36,6 +42,7 @@ app.get("/callback", (req, res) => {
   const p2p = queryObject.p2p;
   if (p2p) {
     processDroppPayment(queryObject.p2p, res);
+    console.log(p2p);
   } else {
     const paymentResponse = queryObject.paymentResponse;
     const paymentResponseData = JSON.parse(decodeURIComponent(paymentResponse));
@@ -48,19 +55,40 @@ app.get("/callback", (req, res) => {
   }
 });
 
-app.get("/redeem-callback", (req, res) => {
+app.get("/redemptioncallback", (req, res) => {
   let urlObject = url.parse(req.url, true);
   const queryObject = urlObject.query;
-  processRedemption(
+  redemptionController.processRedemption(
     { userAccountId: queryObject.userAccountId, amount: queryObject.amount },
     res
   );
 });
 
+app.get("/rps-callback", (req, res) => {
+  const queryObject = url.parse(req.url, true).query;
+  const recurringData = queryObject.recurringData;
+  if (recurringData) {
+    recurringController.processRecurring(queryObject.recurringData, res);
+    console.log(recurringData);
+  } else {
+    const paymentResponse = queryObject.recurringData;
+    const paymentResponseData = JSON.parse(decodeURIComponent(paymentResponse));
+    const returnValue = {
+      responseCode: paymentResponseData.responseCode,
+      errors: [],
+      data: paymentResponseData.data,
+    };
+    recurringController.returnRecurringCallback(returnValue, res);
+  }
+});
+
+//Single Payment POST Request
 let signingKey = "";
+let merchantId = "";
 app.use(bodyParser.json());
 app.post("/update-signing-key", (req, res) => {
   const { signingKey: updatedSigningKey } = req.body;
+  const { merchantId: updatedMerchantId } = req.body;
   signingKey = updatedSigningKey;
   res.sendStatus(200);
 });
@@ -68,30 +96,24 @@ app.post("/update-signing-key", (req, res) => {
 // let merchantAccountId = "0.0.4043972";
 // let merchantSigningKey =
 //   "8bd83f9a9eec3a210e726089d48008a09ec39d3aa0d5094667b0d1e36f753c2a";
+
+//Redemption Credit POST Request **BROKEN**
 app.post("/update-merchant-details", (req, res) => {
   const {
     signingKey: updatedSigningKey,
-    merchantId,
+    merchantId: merchantId,
     userAccountId,
     amount,
   } = req.body;
   signingKey = updatedSigningKey;
 
-  processRedemption({ userAccountId, amount }, res);
-
-  res.sendStatus(200);
+  redemptionController.processRedemption({ userAccountId, amount }, res);
 });
-
-const droppPaymentType = {
-  single: "SINGLE",
-  credit: "CREDIT",
-};
 
 function processPayment(p2pObj, res, callback) {
   // NOTE: validate p2p is as per your needs to confirm everything is in order as you expect.
-  const droppClient = new DroppClient("SANDBOX");
-  droppClient
-    .createPaymentRequest(droppPaymentType.single)
+  const droppClient = new droppSdk.DroppClient("SANDBOX");
+  new droppSdk.DroppPaymentRequest(droppClient)
     .submit(p2pObj, signingKey)
     .then(function (paymentResponse) {
       callback(paymentResponse, res);
@@ -104,10 +126,9 @@ function processPayment(p2pObj, res, callback) {
 
 function processDroppPayment(p2p, res) {
   if (p2p) {
-    // NOTE: it is best practice to sanitize inputs before passing them downstream.
     let p2pObj = JSON.parse(p2p);
     let invoiceData = JSON.parse(Buffer.from(p2pObj.invoiceBytes, "base64"));
-    console.log(`invoiceData: ${JSON.stringify(invoiceData)}`);
+
     console.log(
       `Single payment. Initiating: ${invoiceData.currency} ${invoiceData.amount}, ${invoiceData.walletAddress} --> ${invoiceData.merchantAccount}`
     );
@@ -127,42 +148,4 @@ function processDroppPayment(p2p, res) {
 function returnCallback(returnValue, res) {
   const status = returnValue.responseCode === 0 ? "success" : "failure";
   res.render("callback.ejs", { paymentResponse: returnValue, status });
-}
-function processRedemption(data, res) {
-  let redemptionData = {
-    merchantAccountId: "0.0.4043972",
-    userAccountId: data.userAccountId,
-    amount: data.amount,
-    currency: "USD",
-    creditReference: "Test redeem",
-    ipAddress: "127.0.0.1", //todo
-  };
-  console.log(
-    `Credit payment. Initiating: ${redemptionData.currency} ${redemptionData.amount},  ${redemptionData.merchantAccountId} --> ${redemptionData.userAccountId}.`
-  );
-  processRedemptionPayment(redemptionData, res, returnCallback);
-}
-
-function processRedemptionPayment(data, res, callback) {
-  // NOTE: validate data is as per your needs to confirm everything is in order as you expect.
-  const droppClient = new DroppClient("SANDBOX");
-  const signingKey = data.signingKey;
-  droppClient
-    .createPaymentRequest(droppPaymentType.credit)
-    .submit(data, signingKey)
-    .then(function (paymentResponse) {
-      callback(paymentResponse, res);
-      res.sendStatus(200);
-    })
-    .catch(function (paymentError) {
-      callback(paymentError, res);
-    });
-}
-
-function returnRedemptionCallback(returnValue, res) {
-  const status = returnValue.responseCode === 0 ? "success" : "failure";
-  res.render("redemptionCallback.ejs", {
-    paymentResponse: returnValue,
-    status,
-  });
 }
