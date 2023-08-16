@@ -66,12 +66,12 @@ app.get("/redemptioncallback", (req, res) => {
 
 app.get("/rps-callback", (req, res) => {
   const queryObject = url.parse(req.url, true).query;
-  const recurringData = queryObject.recurringData;
+  const recurringData = queryObject.RecurringData;
   if (recurringData) {
-    recurringController.processRecurring(queryObject.recurringData, res);
-    console.log(recurringData);
+    recurringController.processRecurring(queryObject.RecurringData, res);
+    // console.log(RecurringData);
   } else {
-    const paymentResponse = queryObject.recurringData;
+    const paymentResponse = queryObject.RecurringData;
     const paymentResponseData = JSON.parse(decodeURIComponent(paymentResponse));
     const returnValue = {
       responseCode: paymentResponseData.responseCode,

@@ -43,7 +43,7 @@ function processRecurring(recurringData, res) {
   if (recurringData) {
     // NOTE: it is best practice to sanitize inputs before passing them downstream.
     let recurringDataObj = JSON.parse(recurringData);
-    log(`Recurring payment. Initiating.`);
+    console.log(`Recurring payment. Initiating.`);
     processRecurringPayment(recurringDataObj, res, returnRecurringCallback);
   } else {
     res.writeHead(400);
@@ -51,9 +51,9 @@ function processRecurring(recurringData, res) {
   }
 }
 
-function returnRecurringCallback(returnValue, res) {
-  const status = returnValue.responseCode === 0 ? "success" : "failure";
-  res.render("rps-callback.ejs", { paymentResponse: returnValue, status });
+function returnRecurringCallback(recurringData, res) {
+  const status = recurringData.responseCode === 0 ? "success" : "failure";
+  res.render("rps-callback.ejs", { paymentResponse: recurringData, status });
 }
 
 module.exports = {
