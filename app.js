@@ -8,6 +8,7 @@ const bodyParser = require("body-parser");
 
 const droppSdk = require("./dropp-sdk-js");
 
+const singlePayController = require("./controllers/singlePayController");
 const redemptionController = require("./controllers/redemptionController");
 const recurringController = require("./controllers/recurringController");
 
@@ -42,7 +43,7 @@ app.get("/callback", (req, res) => {
   const p2p = queryObject.p2p;
   if (p2p) {
     processDroppPayment(queryObject.p2p, res);
-    console.log(p2p);
+    // console.log(p2p);
   } else {
     const paymentResponse = queryObject.paymentResponse;
     const paymentResponseData = JSON.parse(decodeURIComponent(paymentResponse));
@@ -51,17 +52,47 @@ app.get("/callback", (req, res) => {
       errors: [],
       data: paymentResponseData.data,
     };
-    returnCallback(returnValue, res);
+    singlePayController.returnCallback(returnValue, res);
   }
 });
 
 app.get("/redemptioncallback", (req, res) => {
-  let urlObject = url.parse(req.url, true);
-  const queryObject = urlObject.query;
-  redemptionController.processRedemption(
-    { userAccountId: queryObject.userAccountId, amount: queryObject.amount },
-    res
-  );
+  let queryObject = url.parse(req.url, true).query;
+  const data = queryObject.query;
+
+  if (data) {
+    const merchantAccountId =
+      document.getElementById("merchant-id-input").value;
+    const signingKey = document.getElementById("signing-key-input").value;
+
+    redemptionController.processRedemption(
+      { userAccountId: queryObject.userAccountId, amount: queryObject.amount },
+      res,
+      merchantAccountId,
+      signingKey
+    );
+  } else {
+    const paymentResponse = queryObject.paymentResponse;
+
+    if (!paymentResponse) {
+      console.log("Invalid response object, return to home");
+    } else {
+      try {
+        const paymentResponseData = JSON.parse(
+          decodeURIComponent(paymentResponse)
+        );
+        const returnValue = {
+          responseCode: paymentResponseData.responseCode,
+          errors: [],
+          data: paymentResponseData.data,
+        };
+        redemptionController.returnRedemptionCallback(returnValue, res);
+      } catch (error) {
+        // Handle the case where paymentResponse is not valid JSON
+        // You might want to redirect or display an error message
+      }
+    }
+  }
 });
 
 app.get("/rps-callback", (req, res) => {
@@ -93,25 +124,7 @@ app.post("/update-signing-key", (req, res) => {
   res.sendStatus(200);
 });
 
-// let merchantAccountId = "0.0.4043972";
-// let merchantSigningKey =
-//   "8bd83f9a9eec3a210e726089d48008a09ec39d3aa0d5094667b0d1e36f753c2a";
-
-//Redemption Credit POST Request **BROKEN**
-app.post("/update-merchant-details", (req, res) => {
-  const {
-    signingKey: updatedSigningKey,
-    merchantId: merchantId,
-    userAccountId,
-    amount,
-  } = req.body;
-  signingKey = updatedSigningKey;
-
-  redemptionController.processRedemption({ userAccountId, amount }, res);
-});
-
 function processPayment(p2pObj, res, callback) {
-  // NOTE: validate p2p is as per your needs to confirm everything is in order as you expect.
   const droppClient = new droppSdk.DroppClient("SANDBOX");
   new droppSdk.DroppPaymentRequest(droppClient)
     .submit(p2pObj, signingKey)
@@ -145,7 +158,56 @@ function processDroppPayment(p2p, res) {
   }
 }
 
-function returnCallback(returnValue, res) {
-  const status = returnValue.responseCode === 0 ? "success" : "failure";
-  res.render("callback.ejs", { paymentResponse: returnValue, status });
+//Redemption Credit POST Request **BROKEN**
+// Define and initialize the merchantAccountId variable at the beginning of app.js
+let merchantAccountId = "0.0.4043972"; // You can set an initial value or retrieve it from your application's configuration
+
+// Function to update merchantAccountId
+function updateMerchantAccountId(updatedMerchantId) {
+  return new Promise((resolve, reject) => {
+    merchantAccountId = updatedMerchantId; // Update the merchant ID
+    resolve(merchantAccountId);
+  });
 }
+
+// Function to update signing key
+function updateSigningKey(updatedSigningKey) {
+  return new Promise((resolve, reject) => {
+    signingKey = updatedSigningKey; // Update the signing key
+    resolve(signingKey);
+  });
+}
+
+// Update signing key
+app.post("/update-redemption-signing-key", async (req, res) => {
+  const { signingKey, userAccountId, amount } = req.body;
+  try {
+    const response = await redemptionController.processRedemption(
+      { userAccountId, amount },
+      merchantAccountId, // Use the updated merchantAccountId
+      signingKey // Use the updated signingKey
+    );
+    res.status(200).send(response);
+  } catch (error) {
+    res.status(500).send({ error: "An error occurred" });
+  }
+});
+
+app.post("/update-redemption-merchant-id", async (req, res) => {
+  const { merchantId: updatedMerchantId, userAccountId, amount } = req.body;
+  try {
+    merchantAccountId = updatedMerchantId; // Update the merchantAccountId
+    const response = await redemptionController.processRedemption(
+      { userAccountId, amount },
+      merchantAccountId, // Use the updated merchantAccountId
+      signingKey // Use the provided temporary signingKey
+    );
+    res.status(200).send(response);
+  } catch (error) {
+    res.status(500).send({ error: "An error occurred" });
+  }
+});
+
+// let merchantAccountId = "0.0.4043972";
+// let merchantSigningKey =
+//   "8bd83f9a9eec3a210e726089d48008a09ec39d3aa0d5094667b0d1e36f753c2a";

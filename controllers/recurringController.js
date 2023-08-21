@@ -53,6 +53,10 @@ function processRecurring(recurringData, res) {
 
 function returnRecurringCallback(recurringData, res) {
   const status = recurringData.responseCode === 0 ? "success" : "failure";
+  // Debugging, trying to display Data object on rps-callback.ejs
+  // console.log("Rendering rps-callback.ejs with:", recurringData, status);
+  // console.log("Data:", recurringData.data);
+
   res.render("rps-callback.ejs", { paymentResponse: recurringData, status });
 }
 

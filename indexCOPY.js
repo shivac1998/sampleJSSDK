@@ -2,24 +2,52 @@ const http = require("http");
 const url = require("url");
 const droppPayment = require("./dropp-payment");
 const fs = require("fs").promises;
+const express = require("express");
+const app = express();
+const bodyParser = require("body-parser");
+const port = 8000;
 
-const droppSdk = require("./dropp-sdk-js");
+let signingKey = "8bd83f9a9eec3a210e726089d48008a09ec39d3aa0d5094667b0d1e36f753c2a";
+
+app.use(bodyParser.json());
+
+app.post("/update-signing-key", (req, res) => {
+  signingKey = req.body.signingKey;
+
+  processPayment.setSigningKey(signingKey);
+
+  res.sendStatus(200);
+});
+
+const { DroppClient } = require("./dropp-sdk-js");
 
 require("dotenv").config();
 
 const myDroppMerchantAccountId = process.env.DROPP_MERCHANT_ID;
 
-function serveHtmlFileContents(filename, res) {
-  return serveFileContents(filename, "text/html", res);
+const droppPaymentType = {
+  single: "SINGLE",
+  credit: "CREDIT",
+};
+
+function processPayment(p2pObj, res, callback) {
+  // NOTE: validate p2p is as per your needs to confirm everything is in order as you expect.
+  const droppClient = new DroppClient("SANDBOX");
+  droppClient
+    .createPaymentRequest(droppPaymentType.single)
+    .submit(p2pObj, signingKey)
+    .then(function (paymentResponse) {
+      callback(paymentResponse, res);
+    })
+    .catch(function (paymentError) {
+      console.log(`paymentError: ${paymentError}`);
+      callback(paymentError, res);
+    });
 }
 
-function serveJsFileContents(filename, res) {
-  return serveFileContents(filename, "application/javascript", res);
-}
-
-function serveFileContents(filename, contentType, res) {
+function serveFileContents(filename, res) {
   getFileContents(filename, function (contents) {
-    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Type", "text/html");
     res.writeHead(200);
     res.end(contents);
   });
@@ -49,22 +77,10 @@ function processDroppPayment(p2p, res) {
     log(
       `Single payment. Initiating: ${invoiceData.currency} ${invoiceData.amount}, ${invoiceData.walletAddress} --> ${invoiceData.merchantAccount}`
     );
-    droppPayment.processPayment(p2pObj, res, returnCallback);
+    processPayment(p2pObj, res, returnCallback);
   } else {
     res.writeHead(400);
     res.end(JSON.stringify({ error: "Required p2p param is missing." }));
-  }
-}
-
-function processRecurring(recurringData, res) {
-  if (recurringData) {
-    // NOTE: it is best practice to sanitize inputs before passing them downstream.
-    let recurringDataObj = JSON.parse(recurringData);
-    log(`Recurring payment. Initiating.`);
-    droppPayment.processRecurringPayment(recurringDataObj, res, returnCallback);
-  } else {
-    res.writeHead(400);
-    res.end(JSON.stringify({ error: "Required param is missing." }));
   }
 }
 
@@ -91,9 +107,6 @@ const requestListener = function (req, res) {
   const queryObject = urlObject.query;
   let pathname = urlObject.pathname;
   switch (pathname) {
-    case "/rps-callback":
-      processRecurring(queryObject.RecurringData, res);
-      break;
     case "/callback":
       processDroppPayment(queryObject.p2p, res);
       break;
@@ -113,9 +126,7 @@ const requestListener = function (req, res) {
     /* fall through */
     default:
       if (pathname.endsWith(".html")) {
-        serveHtmlFileContents(pathname, res);
-      } else if (pathname.endsWith(".js")) {
-        serveJsFileContents(pathname, res);
+        serveFileContents(pathname, res);
       } else {
         unknown(res);
       }
@@ -140,8 +151,11 @@ function log(message) {
 }
 
 const host = "localhost";
-const port = 8000;
 const server = http.createServer(requestListener);
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
 
 server.listen(port, host, () => {
   console.log();
@@ -155,6 +169,5 @@ server.listen(port, host, () => {
 
   // The DroppClient instantiation is not needed here.
   // It is included as a means to confirm if Dropp SDK is installed and accessible.
-  const droppClient = new droppSdk.DroppClient(process.env.DROPP_ENVIRONMENT);
-  new droppSdk.DroppPaymentRequest(droppClient);
+  new DroppClient("SANDBOX");
 });

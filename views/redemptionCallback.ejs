@@ -76,15 +76,24 @@
       <h2>Transaction Receipt</h2>
       <p>Status: <%= status %></p>
       <pre id="paymentResponse"></pre>
+      <% if (paymentResponse && paymentResponse.data) { %>
+      <p>Payment Reference: <%= paymentResponse.data.paymentRef %></p>
+      <p>Fee: <%= paymentResponse.data.fee %></p>
+      <!-- ... other properties you want to display ... -->
+      <% } %>
     </div>
     <script>
-      function displayPaymentData(data) {
-        var paymentResponseElement = document.getElementById("redemptionData");
-        paymentResponseElement.textContent = JSON.stringify(data, null, 2);
+      function displayPaymentData(returnValue) {
+        var paymentResponseElement = document.getElementById("paymentResponse");
+        paymentResponseElement.textContent = JSON.stringify(
+          returnValue,
+          null,
+          2
+        );
       }
 
       var queryParams = new URLSearchParams(window.location.search);
-      var paymentResponse = queryParams.get("redemptionData");
+      var paymentResponse = queryParams.get("paymentResponse");
 
       if (paymentResponse) {
         var decodedPaymentResponse = decodeURIComponent(paymentResponse);

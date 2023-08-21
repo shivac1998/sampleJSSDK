@@ -135,35 +135,67 @@
         event.preventDefault();
 
         // Get the values from the input fields
-        const merchantId = document.getElementById("merchant-id-input").value;
-        const signingKey = document.getElementById("signing-key-input").value;
+        var inputField = document.getElementById("merchant-id-input");
+        const merchantId = inputField.value;
+        var signingKeyField = document.getElementById("signing-key-input");
+        var signingKey = signingKeyField.value;
         const userAccountId = document.getElementById(
           "user-account-id-input"
         ).value;
         const amount = document.getElementById("amount").value;
 
-        // Send an HTTP request to the server to update merchant details
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/update-merchant-details", true);
-        xhr.setRequestHeader("Content-Type", "application/json");
+        // POST request for signing key
+        const xhrSigningKey = new XMLHttpRequest();
+        xhrSigningKey.open("POST", "/update-redemption-signing-key", true);
+        xhrSigningKey.setRequestHeader("Content-Type", "application/json");
 
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
-            // After the merchant details are updated, redirect to the redeem callback page
-            const redirectUrl = `/redemptioncallback?userAccountId=${userAccountId}&amount=${amount}&merchantId=${merchantId}`;
-            window.location.href = redirectUrl;
+        xhrSigningKey.onreadystatechange = function () {
+          if (
+            xhrSigningKey.readyState === XMLHttpRequest.DONE &&
+            xhrSigningKey.status === 200
+          ) {
+            // Handle the response from the server if needed
           }
         };
 
-        const requestBody = {
-          signingKey,
-          merchantId,
+        xhrSigningKey.send(JSON.stringify({ signingKey: signingKey }));
+
+        // Send POST request to update merchant ID
+        var xhrMerchantID = new XMLHttpRequest();
+        xhrMerchantID.open("POST", "/update-redemption-merchant-id", true);
+        xhrMerchantID.setRequestHeader("Content-Type", "application/json");
+
+        xhrMerchantID.onreadystatechange = function () {
+          if (
+            xhrMerchantID.readyState === XMLHttpRequest.DONE &&
+            xhrMerchantID.status === 200
+          ) {
+            // Handle the response from the server if needed
+          }
         };
 
-        xhr.send(JSON.stringify(requestBody));
+        xhrMerchantID.send(JSON.stringify({ merchantId: merchantId }));
+
+        // var droppPaymentLink = document.getElementById("dropp-payment-link");
+        // droppPaymentLink.dataset.merchantId = merchantId;
+        // droppPaymentLink.setAttribute("data-merchant-id", merchantId);
+        // droppPaymentLink.click();
       }
     </script>
-
+    <a
+      id="dropp-payment-link"
+      class="dropp-payment"
+      data-amount="0.01"
+      data-callback-url="http://localhost:8000/redemptioncallback"
+      data-currency="USD"
+      data-description="Pixels Sample Sale"
+      data-merchant-id=""
+      data-reference="Pix Art"
+      data-thumbnail="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Pixel_geometry_01_Pengo.jpg/400px-Pixel_geometry_01_Pengo.jpg"
+      data-title="Pixels"
+      data-type="Mystery"
+      style="display: none"
+    ></a>
     <div><a href="/">Return Home</a></div>
   </body>
 </html>
