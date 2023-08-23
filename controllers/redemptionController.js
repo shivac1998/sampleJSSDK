@@ -1,6 +1,6 @@
 const droppSdk = require("../dropp-sdk-js");
 
-function processRedemption(data, merchantAccountId, signingKey) {
+function processRedemption(data, merchantAccountId, signingKeyUpdate) {
   return new Promise((resolve, reject) => {
     let redemptionData = {
       merchantAccountId: merchantAccountId,
@@ -14,20 +14,21 @@ function processRedemption(data, merchantAccountId, signingKey) {
       `Credit payment. Initiating: ${redemptionData.currency} ${redemptionData.amount},  ${redemptionData.merchantAccountId} --> ${redemptionData.userAccountId}.`
     );
 
-    processCreditPayment(redemptionData, signingKey)
+    processCreditPayment(redemptionData, signingKeyUpdate)
       .then((paymentResponse) => {
         resolve(paymentResponse);
       })
       .catch((error) => {
+        console.error("Error in processCreditPayment:", error);
         reject(error);
       });
   });
 }
 
-function processCreditPayment(data, signingKey) {
+function processCreditPayment(data, signingKeyUpdate) {
   return new Promise((resolve, reject) => {
     const droppClient = new droppSdk.DroppClient("SANDBOX");
-
+    const signingKey = signingKeyUpdate;
     new droppSdk.DroppCreditPaymentRequest(droppClient)
       .submit(data, signingKey)
       .then((paymentResponse) => {
@@ -36,11 +37,13 @@ function processCreditPayment(data, signingKey) {
           resolve({ responseCode: 0 });
         } else {
           // Error case: Reject with error
+          console.error("Error in processCreditPayment:", paymentError);
           reject({ error: "An error occurred" });
         }
       })
       .catch((paymentError) => {
         // Error case: Reject with error
+        console.error("Error in processCreditPayment:", paymentError);
         reject({ error: "An error occurred" });
       });
   });

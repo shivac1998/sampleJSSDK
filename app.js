@@ -65,8 +65,12 @@ app.get("/redemptioncallback", (req, res) => {
       document.getElementById("merchant-id-input").value;
     const signingKey = document.getElementById("signing-key-input").value;
 
+    // Change from const to let for userAccountId and amount
+    let userAccountId = queryObject.userAccountId;
+    let amount = queryObject.amount;
+
     redemptionController.processRedemption(
-      { userAccountId: queryObject.userAccountId, amount: queryObject.amount },
+      { userAccountId, amount }, // Update variable names here
       res,
       merchantAccountId,
       signingKey
@@ -158,52 +162,40 @@ function processDroppPayment(p2p, res) {
   }
 }
 
-//Redemption Credit POST Request **BROKEN**
-// Define and initialize the merchantAccountId variable at the beginning of app.js
-let merchantAccountId = "0.0.4043972"; // You can set an initial value or retrieve it from your application's configuration
+//Redemption Credit POST Request
 
-// Function to update merchantAccountId
-function updateMerchantAccountId(updatedMerchantId) {
-  return new Promise((resolve, reject) => {
-    merchantAccountId = updatedMerchantId; // Update the merchant ID
-    resolve(merchantAccountId);
-  });
-}
-
-// Function to update signing key
-function updateSigningKey(updatedSigningKey) {
-  return new Promise((resolve, reject) => {
-    signingKey = updatedSigningKey; // Update the signing key
-    resolve(signingKey);
-  });
-}
-
-// Update signing key
-app.post("/update-redemption-signing-key", async (req, res) => {
-  const { signingKey, userAccountId, amount } = req.body;
+app.post("/update-redemption-merchant-id", async (req, res) => {
+  const { merchantAccount } = req.body;
   try {
-    const response = await redemptionController.processRedemption(
-      { userAccountId, amount },
-      merchantAccountId, // Use the updated merchantAccountId
-      signingKey // Use the updated signingKey
-    );
-    res.status(200).send(response);
+    // You can perform any necessary validation or checks here before updating
+    merchantAccountId = merchantAccount; // Update the merchantAccountId
+    res.status(200).send({ message: "Merchant ID updated successfully" });
   } catch (error) {
     res.status(500).send({ error: "An error occurred" });
   }
 });
 
-app.post("/update-redemption-merchant-id", async (req, res) => {
-  const { merchantId: updatedMerchantId, userAccountId, amount } = req.body;
+// Change from const to let for signingKeyUpdate
+app.post("/update-redemption-signing-key", async (req, res) => {
+  // console.log("Received POST request to /update-redemption-signing-key");
+  const { signingKeyUpdate, userAccountId, amount } = req.body;
+  // console.log("Received signingKeyUpdate:", signingKeyUpdate);
   try {
-    merchantAccountId = updatedMerchantId; // Update the merchantAccountId
+    const userAccountId = req.body.userAccountId;
+    const amount = req.body.amount;
+    // console.log("Attempting to update signing key...");
+
+    // Using the updated signingKey in redemption process
     const response = await redemptionController.processRedemption(
       { userAccountId, amount },
-      merchantAccountId, // Use the updated merchantAccountId
-      signingKey // Use the provided temporary signingKey
+      merchantAccountId,
+      signingKeyUpdate // Use the updated signingKey
     );
+
+    console.log("Signing key updated successfully.");
     res.status(200).send(response);
   } catch (error) {
+    console.error("Error:", error);
     res.status(500).send({ error: "An error occurred" });
   }
 });
