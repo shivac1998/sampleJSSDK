@@ -100,7 +100,12 @@
         Use case of merchant paying or crediting the customer
       </p>
     </div>
-    <form onsubmit="handleFormSubmit(event)" method="POST" target="_blank">
+    <form
+      onsubmit="handleFormSubmit(event)"
+      action="http://localhost:8000/redemptioncallback"
+      method="POST"
+      target="_blank"
+    >
       <label for="merchant-id-input"
         >Merchant ID:
         <input
@@ -166,13 +171,12 @@
         console.log("Amount:", amount);
 
         // Send a POST request to update merchant ID
-        // Send a POST request to update merchant ID
         const response = await fetch("/update-redemption-merchant-id", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ merchantAccount, userAccountId, amount }), // Include userAccountId and amount here
+          body: JSON.stringify({ merchantAccount, userAccountId, amount }),
         });
 
         if (response.ok) {
@@ -184,7 +188,7 @@
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ signingKeyUpdate, userAccountId, amount }), // Include userAccountId and amount here
+              body: JSON.stringify({ signingKeyUpdate, userAccountId, amount }),
             }
           );
 
@@ -196,6 +200,9 @@
             // Example: You can use userAccountId and amount here
             console.log("User Account ID:", userAccountId);
             console.log("Amount:", amount);
+
+            // Redirect to /redemptioncallback
+            // window.location.href = "localhost:8000/redemptioncallback";
           } else {
             console.error("Failed to update signing key");
           }

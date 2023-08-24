@@ -95,13 +95,43 @@
       for the data-merchant-id attribute.
     </div>
 
+    <p><strong>ID of Merchant you are subscribing to</strong></p>
+    <form onsubmit="handleFormSubmit(event)">
+      <label for="merchant-id-input">Merchant ID:</label>
+      <input type="text" id="merchant-id-input" required />
+
+    </form>
+
+    <script>
+      function handleFormSubmit(event) {
+        event.preventDefault();
+        var inputField = document.getElementById("merchant-id-input");
+        var merchantID = inputField.value;
+
+
+        var droppPaymentLink = document.getElementById("dropp-payment");
+        droppPaymentLink.dataset.merchantId = merchantID;
+        droppPaymentLink.setAttribute("data-merchant-id", merchantID);
+        droppPaymentLink.click(); // Trigger the click event on the anchor tag
+      }
+    </script>
     <p><strong>Subscription Details</strong></p>
     <div class="pix">
       <ul>
         <li>Amount: 0.20</li>
         <li>Currency: USD</li>
         <li>
-          Payment Interval: Daily (i.e. subscription payment is due daily)
+          Payment Interval: Daily (i.e. subscription payment is due
+          daily)<br></br>Current frequency options are:</li>
+          <or>
+            <br>“NONE”</br>
+            <br>“HALF_HOURLY”</br>
+            <br>“HOURLY”</br>
+            <br>“DAILY”</br>
+            <br>“WEEKLY”</br>
+            <br>“MONTHLY”</br>
+            <br>“YEARLY”</br>
+          </or>
         </li>
       </ul>
     </div>

@@ -16,7 +16,12 @@ function processRedemption(data, merchantAccountId, signingKeyUpdate) {
 
     processCreditPayment(redemptionData, signingKeyUpdate)
       .then((paymentResponse) => {
-        resolve(paymentResponse);
+        // Construct the redirect URL
+        const encodedPaymentResponse = encodeURIComponent(
+          JSON.stringify(paymentResponse)
+        );
+        const redirectUrl = `/redemptioncallback?paymentResponse=${encodedPaymentResponse}`;
+        resolve(redirectUrl); // Return the URL to the caller
       })
       .catch((error) => {
         console.error("Error in processCreditPayment:", error);

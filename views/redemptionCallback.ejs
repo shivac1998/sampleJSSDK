@@ -94,13 +94,22 @@
 
       var queryParams = new URLSearchParams(window.location.search);
       var paymentResponse = queryParams.get("paymentResponse");
+      var status = queryParams.get("status"); // Add this line
 
-      if (paymentResponse) {
-        var decodedPaymentResponse = decodeURIComponent(paymentResponse);
-        var paymentResponseData = JSON.parse(decodedPaymentResponse);
-        displayPaymentData(paymentResponseData);
+      if (status === "success") {
+        // Check the status
+        if (paymentResponse) {
+          var decodedPaymentResponse = decodeURIComponent(paymentResponse);
+          var paymentResponseData = JSON.parse(decodedPaymentResponse);
+          displayPaymentData(paymentResponseData);
+        } else {
+          console.log("Missing data");
+        }
+      } else {
+        console.log("Bad data");
       }
     </script>
+
     <a href="/">Return Home</a>
   </body>
 </html>

@@ -61,20 +61,23 @@ app.get("/redemptioncallback", (req, res) => {
   const data = queryObject.query;
 
   if (data) {
-    const merchantAccountId =
-      document.getElementById("merchant-id-input").value;
-    const signingKey = document.getElementById("signing-key-input").value;
-
     // Change from const to let for userAccountId and amount
     let userAccountId = queryObject.userAccountId;
     let amount = queryObject.amount;
 
-    redemptionController.processRedemption(
-      { userAccountId, amount }, // Update variable names here
-      res,
-      merchantAccountId,
-      signingKey
-    );
+    redemptionController
+      .processRedemption(
+        { userAccountId, amount },
+        merchantAccountId,
+        signingKey
+      )
+      .then((redirectUrl) => {
+        res.redirect(redirectUrl);
+      })
+      .catch((error) => {
+        console.error("Error in processRedemption:", error);
+        // Handle the error
+      });
   } else {
     const paymentResponse = queryObject.paymentResponse;
 
@@ -111,7 +114,7 @@ app.get("/rps-callback", (req, res) => {
     const returnValue = {
       responseCode: paymentResponseData.responseCode,
       errors: [],
-      data: paymentResponseData.data,
+      // data: paymentResponseData.data,
     };
     recurringController.returnRecurringCallback(returnValue, res);
   }
